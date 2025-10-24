@@ -49,6 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const darkThemeBtn = document.getElementById("darkThemeBtn");
   const lightThemeBtn = document.getElementById("lightThemeBtn");
   const scrollBottomBtn = document.getElementById("scrollBottom");
+
+  // === Tambahan variabel agar API mudah diganti ===
+  const API_BASE_URL = "https://api.nekolabs.my.id/ai/ai4chat?text=";
   
   let currentChatId = `chat_${Date.now()}`;
   let chats = JSON.parse(localStorage.getItem('finixChats') || '[]');
@@ -164,22 +167,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // === PERUBAHAN DI SINI ===
+  // === BAGIAN API BARU ===
   async function fetchAIResponse(message) {
     sendButton.disabled = true;
     sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
 
     try {
       const encodedText = encodeURIComponent(message);
-      const response = await fetch(`https://api.nekolabs.my.id/ai/ai4chat?text=${encodedText}`, {
+      const response = await fetch(`${API_BASE_URL}${encodedText}`, {
         method: 'GET',
         headers: { 'Accept': 'application/json' }
       });
 
-      if (!response.ok) throw new Error('Server error');
+      if (!response.ok) throw new Error(`Server error: ${response.status}`);
       const data = await response.json();
 
-      return data.result || data.message || "Maaf, saya tidak mengerti. Coba lagi ya.";
+      // Ambil hanya "result"
+      if (data && data.success && data.result) {
+        return data.result;
+      } else {
+        return "Maaf, saya tidak menerima balasan yang valid dari server.";
+      }
     } catch (err) {
       console.error('Fetch error:', err);
       return "Terjadi kesalahan saat memproses permintaan.";
