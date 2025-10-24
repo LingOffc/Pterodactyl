@@ -49,6 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const darkThemeBtn = document.getElementById("darkThemeBtn");
   const lightThemeBtn = document.getElementById("lightThemeBtn");
   const scrollBottomBtn = document.getElementById("scrollBottom");
+
+  // === Tambahan variabel agar API mudah diganti ===
+  const API_BASE_URL = "https://api.nekolabs.my.id/ai/ai4chat?text=";
   
   let currentChatId = `chat_${Date.now()}`;
   let chats = JSON.parse(localStorage.getItem('finixChats') || '[]');
@@ -163,44 +166,37 @@ document.addEventListener('DOMContentLoaded', () => {
       darkThemeBtn.classList.remove('active');
     });
   }
-  
-  async function fetchAIResponse(message, userId = "guest") {
+
+  // === BAGIAN API BARU ===
+  async function fetchAIResponse(message) {
     sendButton.disabled = true;
-    sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses';
-    
+    sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-      
-      const response = await fetch('https://luminai.my.id/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          content: message,
-          user: userId,
-          prompt: "Kamu adalah Finix-AI, asisten AI yang ramah dan pintar. Berikan jawaban yang jelas, sopan, dan profesional."
-        }),
-        signal: controller.signal
+      const encodedText = encodeURIComponent(message);
+      const response = await fetch(`${API_BASE_URL}${encodedText}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
       });
-      
-      clearTimeout(timeout);
-      
-      if (!response.ok) throw new Error('Server error');
+
+      if (!response.ok) throw new Error(`Server error: ${response.status}`);
       const data = await response.json();
-      return data.result || "Maaf, saya tidak mengerti. Bisa diulangi?";
+
+      // Ambil hanya "result"
+      if (data && data.success && data.result) {
+        return data.result;
+      } else {
+        return "Maaf, saya tidak menerima balasan yang valid dari server.";
+      }
     } catch (err) {
       console.error('Fetch error:', err);
-      if (err.name === 'AbortError') {
-        return "Permintaan waktu habis. Silakan coba lagi.";
-      }
-      return "Maaf, terjadi kesalahan dalam memproses permintaan Anda. Silakan coba lagi.";
+      return "Terjadi kesalahan saat memproses permintaan.";
     } finally {
       sendButton.disabled = false;
       sendButton.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim';
     }
   }
+  // === SAMPAI SINI ===
   
   function sendMessage() {
     const text = userInput.value.trim();
@@ -278,7 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     chatBox.appendChild(div);
     formatCodeBlocks(div);
-    
     div.scrollIntoView({ behavior: 'smooth', block: 'end' });
     return div;
   }
@@ -300,7 +295,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const inlinePattern = /`([^`]+)`/g;
     element.innerHTML = element.innerHTML.replace(inlinePattern, '<code>$1</code>');
-    
     highlightCodeBlocks();
   }
   
